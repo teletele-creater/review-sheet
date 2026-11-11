@@ -579,7 +579,7 @@ class Component extends DCLogic {
     if (!s.mPaste.trim() || !s.mPasteName.trim()) return;
     var p = new Date(), pm = new Date(p.getFullYear(), p.getMonth() - 1, 1);
     var ym = p.getDate() <= 10 ? pm.getFullYear() + '-' + pm.getMonth() : p.getFullYear() + '-' + p.getMonth();
-    return this.genMonthly({ name: s.mPasteName.trim().replace(/(さん|くん|様)$/, ''), ym: s.mYM || ym, body: s.mPaste.trim().slice(0, 14000) });
+    return this.genMonthly({ name: s.mPasteName.trim().replace(/(さん|くん|様)$/, ''), ym: s.mYM || ym, body: s.mPaste.trim().slice(0, 20000) });
   }
   componentDidMount() {
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
@@ -627,7 +627,7 @@ class Component extends DCLogic {
       var body = src ? src.body : recs.map(function (r, i) {
         return '【' + (i + 1) + '回目' + (r.date ? '／' + r.date : '') + (r.subject ? '／' + r.subject : '') + '】\n' +
           (r.summary ? '授業内容: ' + r.summary + '\n' : '') + 'コメント: ' + r.comment;
-      }).join('\n\n').slice(0, 14000);
+      }).join('\n\n');
       var prompt = [
         'あなたはオンライン個別指導塾の講師です。以下は「' + who + '」様への、' + ymL + 'の各回の振り返りコメントです' + (src ? '（LINEから貼り付けたもの。日時・スタンプなどの余計な文字は無視する）' : '') + '。',
         'これらをまとめて、保護者様と学生様に送る「今月の振り返りコメント」を1本作成してください。',
@@ -709,13 +709,13 @@ class Component extends DCLogic {
       ].join('\n');
       var r = '';
       try {
-        r = await this.ask(p, part, 2500, true);
+        r = await this.ask(p, part, 4000, true);
       } catch (e) {
         var m = (e && e.message) || '';
         if (/too large/i.test(m) && part.length > 1) {
           // 1ページずつに落として再試行
           for (var q = 0; q < part.length; q++) {
-            try { r += (r ? '\n' : '') + await this.ask(p, [part[q]], 2500, true); } catch (e2) { errs.push(e2); }
+            try { r += (r ? '\n' : '') + await this.ask(p, [part[q]], 4000, true); } catch (e2) { errs.push(e2); }
           }
         } else errs.push(e);
       }
@@ -813,6 +813,7 @@ class Component extends DCLogic {
       if (res.status === 429 || res.status === 529) throw new Error('Claude APIが混み合っています。少し待ってからお試しください。');
       throw new Error('Claude APIでエラーが発生しました（' + em.slice(0, 120) + '）');
     }
+    if (j && j.stop_reason === 'max_tokens' && !plainText) throw new Error('AIの返事が長すぎて途中で切れました。もう一度「振り返りを作る」を押してください。');
     return (j && Array.isArray(j.content) ? j.content : []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
   }
 
@@ -918,7 +919,25 @@ class Component extends DCLogic {
   parseJson(raw) {
     var s = String(raw || ''), a = s.indexOf('{'), b = s.lastIndexOf('}');
     if (a < 0 || b < a) throw new Error('うまく読み取れませんでした。もう一度お試しください。');
-    return JSON.parse(s.slice(a, b + 1).replace(/,\s*([}\]])/g, '$1'));
+    var body = s.slice(a, b + 1).replace(/,\s*([}\]])/g, '$1');
+    var obj;
+    try { obj = JSON.parse(body); } catch (e1) {
+      // LaTeX の \frac などが1本の \ のまま来たときに、\ を2本にして読み直す
+      var fixed = body.replace(/\\\\/g, '\u0000').replace(/\\([a-zA-Z]{2,})/g, '\u0000$1').replace(/\\(?!["\/bfnrtu])/g, '\u0000').replace(/\u0000/g, '\\\\');
+      try { obj = JSON.parse(fixed); } catch (e2) { throw new Error('AIの返事をうまく読み取れませんでした。もう一度「振り返りを作る」を押してください。'); }
+    }
+    // \frac → 改ページ文字+rac のように化けた数式を元に戻す
+    var fix = function (v) {
+      if (typeof v === 'string') {
+        return v.replace(/\f/g, '\\f').replace(/\u0008/g, '\\b')
+          .replace(/\t(?=[a-z])/g, '\\t').replace(/\r(?=[a-z])/g, '\\r')
+          .replace(/\n(?=(eq|u[^a-z]|abla|ot|eg|e[^a-z]|i[^a-z]|ewline)|u$)/g, '\\n');
+      }
+      if (Array.isArray(v)) return v.map(fix);
+      if (v && typeof v === 'object') { for (var k in v) v[k] = fix(v[k]); return v; }
+      return v;
+    };
+    return fix(obj);
   }
 
   async readPdf(file) {
@@ -994,7 +1013,7 @@ class Component extends DCLogic {
         this.state.nextDate ? '次回の授業日: ' + this.state.nextDate : '',
         this.state.memo ? '講師の補足メモ: ' + this.state.memo : '',
         '',
-        notes ? '--- ノート ---\n' + notes.slice(0, 14000) : '',
+        notes ? '--- ノート ---\n' + notes.slice(0, 24000) : '',
         '',
         '条件:',
         '・文体は「' + (this.props.tone || 'やさしく励ます') + '」。生徒本人が読むので、講師から生徒への語りかけにする。',
@@ -1024,7 +1043,7 @@ class Component extends DCLogic {
         '次のJSONのみを出力（説明文なし）:',
         '{"name":"","subject":"","summary":"","understood":[],"notUnderstood":[],"nextContent":"","homeworkSets":[{"level":"基礎","problems":""},{"level":"標準","problems":""},{"level":"応用","problems":""}],"comment":""}'
       ].filter(Boolean).join('\n');
-      var j = this.parseJson(await this.ask(prompt, images, 3200));
+      var j = this.parseJson(await this.ask(prompt, images, 8000));
       var got = [j.summary, j.nextContent, (j.understood || []).join(''), (j.notUnderstood || []).join('')].join('').replace(/\s/g, '');
       if (got.length < 10 && !this.state.memo) {
         var hint = this._transcribed ? '（読み取り結果 ' + this._transcribed + ' 文字）' : '（読み取り結果が空でした）';
