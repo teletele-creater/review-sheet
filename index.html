@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>授業振り返りジェネレーター</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { margin: 0; background: #f6f7f9; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  body { word-break: break-word; }
+  img, canvas { max-width: 100%; }
+  a { color: #23417f; text-decoration: none; }
+  a:hover { color: #101828; text-decoration: underline; }
+  input, textarea, button, select { font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #9aa3af; }
+  [contenteditable]:focus { background: #f2f6fd; border-radius: 4px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</helmet>
+<div style="min-height:100vh;background:#f6f7f9;font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',Meiryo,sans-serif;color:#101828;">
+
+  <header style="background:#fff;border-bottom:1px solid #e7e9ee;">
+    <div style="max-width:860px;margin:0 auto;padding:14px clamp(14px,4vw,24px);display:flex;align-items:center;gap:12px;">
+      <div style="width:34px;height:34px;flex:none;border-radius:9px;background:#1b2f5e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;">振</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <div style="font-size:15px;font-weight:700;letter-spacing:.01em;">授業振り返りジェネレーター</div>
+        <div style="font-size:12px;color:#6b7280;">ノートPDFから、決まったフォーマットを埋めます</div>
+      </div>
+      <button type="button" onClick="{{ setKey }}" style="margin-left:auto;flex:none;min-height:40px;padding:8px 14px;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#475467;font-size:13px;font-weight:700;cursor:pointer;" style-hover="border-color:#1b2f5e;color:#1b2f5e;">APIキー</button>
+    </div>
+  </header>
+
+  <main style="max-width:860px;margin:0 auto;padding:clamp(16px,4vw,28px) clamp(14px,4vw,24px) 72px;width:100%;">
+
+    <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="アップロード" style="display:flex;flex-direction:column;gap:14px;">
+        <sc-if value="{{ needBackup }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 15px;border:1px solid #f0d9a8;background:#fdf8ec;border-radius:12px;">
+            <div style="font-size:13px;line-height:1.7;color:#7a5410;flex:1 1 220px;">まだバックアップしていないコメントが <b>{{ unbacked }}件</b> あります。消える前に保存してください。</div>
+            <button type="button" onClick="{{ exportLogs }}" style="min-height:44px;padding:10px 18px;border:1px solid #7a5410;border-radius:8px;background:#fff;color:#7a5410;font-size:14px;font-weight:700;cursor:pointer;" style-hover="background:#fbefd4;">今すぐ保存</button>
+          </div>
+        </sc-if>
+
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(16px,4vw,24px);display:flex;flex-direction:column;gap:18px;">
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-size:16px;font-weight:700;letter-spacing:.01em;">今日のノートを送る</div>
+            <div style="font-size:12px;line-height:1.7;color:#6b7280;">PDFは複数まとめて送れます。ファイル名から学生様名と科目を読み取ります。</div>
+          </div>
+
+          <label style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:clamp(24px,7vw,34px) 18px;border:1.5px dashed #c3cbd9;border-radius:12px;background:#fbfcfe;cursor:pointer;text-align:center;" style-hover="border-color:#1b2f5e;background:#f2f6fd;" onDragOver="{{ onDragOver }}" onDrop="{{ onDrop }}">
+            <div style="width:40px;height:40px;border-radius:50%;background:#eef2f9;color:#1b2f5e;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;">＋</div>
+            <div style="font-size:14px;font-weight:700;color:#1b2f5e;">PDFをドラッグ、またはタップして選ぶ</div>
+            <div style="font-size:11px;color:#8b93a1;">例：土田虹_物理_0727.pdf</div>
+            <input type="file" accept="application/pdf,.pdf" multiple="{{ true }}" onChange="{{ onPick }}" style="display:none;" />
+          </label>
+
+          <sc-if value="{{ hasFiles }}">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ files }}" as="f" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid #e7e9ee;border-radius:10px;">
+                  <div style="width:26px;height:26px;flex:none;border-radius:6px;background:#eef2f9;color:#1b2f5e;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">PDF</div>
+                  <div style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</div>
+                  <div style="font-size:11px;color:#9aa3af;flex:none;">{{ f.size }}</div>
+                  <button type="button" data-index="{{ $index }}" onClick="{{ removeFile }}" style="flex:none;border:none;background:none;color:#9aa3af;font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;" style-hover="color:#b42318;">×</button>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="font-size:12px;font-weight:700;color:#475467;">学生様名</div>
+                <input type="text" value="{{ name }}" onChange="{{ setName }}" placeholder="土田虹" style="width:100%;padding:11px 12px;border:1px solid #d7dbe3;border-radius:8px;font-size:16px;min-height:46px;background:#fff;color:#101828;" />
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="font-size:12px;font-weight:700;color:#475467;">科目</div>
+                <input type="text" value="{{ subject }}" onChange="{{ setSubject }}" placeholder="物理" style="width:100%;padding:11px 12px;border:1px solid #d7dbe3;border-radius:8px;font-size:16px;min-height:46px;background:#fff;color:#101828;" />
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="font-size:12px;font-weight:700;color:#475467;">授業日</div>
+              <button type="button" data-target="lesson" onClick="{{ openCal }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;border:1px solid {{ lessonBorder }};border-radius:8px;background:#fff;min-height:46px;font-size:15px;color:{{ lessonColor }};cursor:pointer;text-align:left;" style-hover="border-color:#1b2f5e;">
+                <span style="min-width:0;">{{ lessonLabel }}</span>
+                <span style="flex:none;color:#8b93a1;font-size:13px;">カレンダー</span>
+              </button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="font-size:12px;font-weight:700;color:#475467;">次回の授業日</div>
+              <button type="button" data-target="next" onClick="{{ openCal }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;border:1px solid {{ nextBorder }};border-radius:8px;background:#fff;min-height:46px;font-size:15px;color:{{ nextColor }};cursor:pointer;text-align:left;" style-hover="border-color:#1b2f5e;">
+                <span style="min-width:0;">{{ nextLabel }}</span>
+                <span style="flex:none;color:#8b93a1;font-size:13px;">カレンダー</span>
+              </button>
+            </div>
+          </div>
+
+          <sc-if value="{{ calOpen }}">
+            <div style="border:1px solid #dbe4f4;background:#fbfcfe;border-radius:12px;padding:clamp(14px,3.5vw,18px);display:flex;flex-direction:column;gap:16px;">
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="font-size:13px;font-weight:700;color:#1b2f5e;">{{ calTitle }}</div>
+                <button type="button" onClick="{{ closeCal }}" style="border:none;background:none;color:#8b93a1;font-size:18px;line-height:1;cursor:pointer;padding:4px 6px;min-height:36px;">×</button>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <button type="button" data-dir="-1" onClick="{{ shiftMonth }}" style="width:40px;height:40px;flex:none;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#1b2f5e;font-size:15px;cursor:pointer;" style-hover="border-color:#1b2f5e;background:#f2f6fd;">‹</button>
+                  <div style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;">{{ monthLabel }}</div>
+                  <button type="button" data-dir="1" onClick="{{ shiftMonth }}" style="width:40px;height:40px;flex:none;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#1b2f5e;font-size:15px;cursor:pointer;" style-hover="border-color:#1b2f5e;background:#f2f6fd;">›</button>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+                  <sc-for list="{{ dows }}" as="w" hint-placeholder-count="7">
+                    <div style="text-align:center;font-size:11px;font-weight:700;color:{{ w.color }};padding:4px 0;">{{ w.label }}</div>
+                  </sc-for>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+                  <sc-for list="{{ cells }}" as="c" hint-placeholder-count="35">
+                    <button type="button" disabled="{{ c.empty }}" data-day="{{ c.day }}" onClick="{{ pickDay }}" style="aspect-ratio:1/1;min-height:40px;display:flex;align-items:center;justify-content:center;border:1px solid {{ c.border }};border-radius:8px;background:{{ c.bg }};color:{{ c.fg }};font-size:14px;font-weight:{{ c.weight }};font-variant-numeric:tabular-nums;cursor:{{ c.cursor }};padding:0;">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:12px;font-weight:700;color:#475467;">開始時刻<span style="font-size:11px;font-weight:400;color:#9aa3af;margin-left:8px;">10時〜23時・1時間</span></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">
+                  <sc-for list="{{ times }}" as="t" hint-placeholder-count="14">
+                    <button type="button" data-hour="{{ t.hour }}" onClick="{{ pickTime }}" style="min-height:42px;padding:8px 4px;border:1px solid {{ t.border }};border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};font-size:13px;font-weight:{{ t.weight }};font-variant-numeric:tabular-nums;cursor:pointer;" style-hover="border-color:#1b2f5e;">{{ t.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid #e7e9ee;padding-top:14px;">
+                <div style="flex:1 1 160px;min-width:0;font-size:13px;color:#475467;font-variant-numeric:tabular-nums;">{{ calPreview }}</div>
+                <button type="button" onClick="{{ confirmCal }}" disabled="{{ calIncomplete }}" style="flex:0 0 auto;min-height:44px;padding:11px 22px;border:none;border-radius:8px;background:#1b2f5e;color:#fff;font-size:14px;font-weight:700;cursor:pointer;" style-hover="background:#23417f;">この日時にする</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:12px;font-weight:700;color:#475467;">宿題・補足メモ<span style="font-size:11px;font-weight:400;color:#9aa3af;margin-left:8px;">任意</span></div>
+            <textarea rows="3" value="{{ memo }}" onChange="{{ setMemo }}" placeholder="宿題：指定の問題の説明" style="width:100%;padding:11px 12px;border:1px solid #d7dbe3;border-radius:8px;font-size:16px;line-height:1.7;resize:vertical;background:#fff;color:#101828;"></textarea>
+          </div>
+
+          <sc-if value="{{ error }}">
+            <div style="padding:13px 15px;border:1px solid #f3c7c2;background:#fdf4f3;border-radius:10px;font-size:13px;line-height:1.7;color:#9a2b20;">{{ error }}</div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <button type="button" onClick="{{ generate }}" disabled="{{ notReady }}" style="flex:1 1 auto;min-height:48px;padding:13px 24px;border:none;border-radius:9px;background:#1b2f5e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em;" style-hover="background:#23417f;">振り返りを作る</button>
+            <button type="button" onClick="{{ showSample }}" style="border:none;background:none;color:#6b7280;font-size:13px;cursor:pointer;text-decoration:underline;padding:8px 0;min-height:40px;">サンプルを見る</button>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(16px,4vw,22px);display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:14px;font-weight:700;color:#101828;">月末のまとめコメント</div>
+          <div style="font-size:12px;line-height:1.8;color:#6b7280;">振り返りを作るたびに、その回のコメントがこの端末に保存されます（当月・前月分のみ）。月末に、ノートを入れなくても保存済みの分だけで学生様ごとの1か月まとめを作れます。</div>
+          <div style="font-size:12px;color:#8b93a1;font-variant-numeric:tabular-nums;">{{ logSummary }}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" onClick="{{ exportLogs }}" disabled="{{ noLogs }}" style="min-height:40px;padding:9px 14px;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#475467;font-size:13px;font-weight:700;cursor:pointer;" style-hover="border-color:#1b2f5e;color:#1b2f5e;">バックアップを保存</button>
+            <label style="min-height:40px;padding:9px 14px;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#475467;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;" style-hover="border-color:#1b2f5e;color:#1b2f5e;">バックアップを読み込む<input type="file" accept=".json,application/json" onChange="{{ importLogs }}" style="display:none;"></input></label>
+          </div>
+          <button type="button" onClick="{{ openMonthly }}" style="align-self:flex-start;min-height:44px;padding:11px 20px;border:1px solid #1b2f5e;border-radius:9px;background:#fff;color:#1b2f5e;font-size:14px;font-weight:700;cursor:pointer;" style-hover="background:#eef2fb;">まとめコメントを作る</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isMonthly }}">
+      <div data-screen-label="月末まとめ" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(16px,4vw,22px);display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="font-size:16px;font-weight:700;">月末のまとめコメント</div>
+            <button type="button" onClick="{{ closeMonthly }}" style="min-height:40px;padding:9px 14px;border:1px solid #d7dbe3;border-radius:8px;background:#fff;color:#475467;font-size:13px;font-weight:700;cursor:pointer;" style-hover="border-color:#1b2f5e;color:#1b2f5e;">戻る</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:12px;font-weight:700;color:#475467;">対象の月</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <sc-for list="{{ mMonths }}" as="m" hint-placeholder-count="2">
+                <button type="button" data-v="{{ m.v }}" onClick="{{ pickMYM }}" style="min-height:44px;padding:11px 16px;border:1px solid {{ m.border }};border-radius:8px;background:{{ m.bg }};color:{{ m.fg }};font-size:14px;font-weight:{{ m.weight }};cursor:pointer;font-variant-numeric:tabular-nums;">{{ m.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:12px;font-weight:700;color:#475467;">学生様</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <sc-for list="{{ mStudents }}" as="p" hint-placeholder-count="3">
+                <button type="button" data-v="{{ p.v }}" onClick="{{ pickMStudent }}" style="min-height:44px;padding:11px 16px;border:1px solid {{ p.border }};border-radius:8px;background:{{ p.bg }};color:{{ p.fg }};font-size:14px;font-weight:{{ p.weight }};cursor:pointer;">{{ p.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ mNoRecords }}">
+            <div style="padding:13px 15px;border:1px solid #e7e9ee;background:#f9fafb;border-radius:10px;font-size:13px;line-height:1.7;color:#6b7280;">この月・この学生様の保存済みコメントがありません。下の「貼り付けて作る」をお使いください。</div>
+          </sc-if>
+
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #e7e9ee;border-radius:10px;background:#fcfcfd;">
+            <div style="font-size:13px;font-weight:700;color:#101828;">LINEで送ったコメントを貼り付けて作る</div>
+            <div style="font-size:12px;line-height:1.7;color:#6b7280;">その月に送った振り返りをLINEからコピーして、まとめて貼り付けてください（何回分でもOK）。</div>
+            <input type="text" value="{{ mPasteName }}" onChange="{{ setMPasteName }}" placeholder="学生様の名前（例：佐藤礼耀）" style="min-height:44px;padding:10px 12px;border:1px solid #d7dbe3;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:#101828;"></input>
+            <textarea rows="8" value="{{ mPaste }}" onChange="{{ setMPaste }}" placeholder="ここに貼り付け" style="width:100%;padding:12px;border:1px solid #d7dbe3;border-radius:8px;font-size:15px;line-height:1.8;resize:vertical;background:#fff;color:#101828;font-family:inherit;"></textarea>
+            <button type="button" onClick="{{ genFromPaste }}" disabled="{{ mPasteNotReady }}" style="min-height:48px;padding:13px 22px;border:none;border-radius:9px;background:#1b2f5e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;" style-hover="background:#23417f;">{{ mPasteLabel }}</button>
+          </div>
+
+          <sc-if value="{{ mHasRecords }}">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:12px;font-weight:700;color:#475467;">保存されているコメント（{{ mCount }}件）</div>
+              <div style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto;">
+                <sc-for list="{{ mList }}" as="r" hint-placeholder-count="3">
+                  <div style="border:1px solid #eceef3;border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;background:#fcfcfd;">
+                    <div style="font-size:11px;font-weight:700;color:#8b93a1;font-variant-numeric:tabular-nums;">{{ r.n }}　{{ r.date }}</div>
+                    <div style="font-size:12.5px;line-height:1.8;color:#475467;white-space:pre-wrap;">{{ r.comment }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button type="button" onClick="{{ genMonthly }}" disabled="{{ mBusy }}" style="flex:1 1 220px;min-height:48px;padding:13px 22px;border:none;border-radius:9px;background:#1b2f5e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;" style-hover="background:#23417f;">{{ mGenLabel }}</button>
+              <button type="button" onClick="{{ clearMonthly }}" style="flex:0 0 auto;min-height:48px;padding:13px 16px;border:1px solid #d7dbe3;border-radius:9px;background:#fff;color:#8b93a1;font-size:13px;font-weight:700;cursor:pointer;" style-hover="border-color:#b42318;color:#b42318;">この分を削除</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ error }}">
+            <div style="padding:13px 15px;border:1px solid #f3c7c2;background:#fdf4f3;border-radius:10px;font-size:13px;line-height:1.7;color:#9a2b20;">{{ error }}</div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ mHasText }}">
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(16px,4vw,22px);display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;font-weight:700;color:#475467;">{{ mTitle }} のまとめコメント</div>
+            <textarea rows="14" value="{{ mText }}" onChange="{{ onEditMonthly }}" style="width:100%;padding:13px 14px;border:1px solid #d7dbe3;border-radius:10px;font-size:15px;line-height:2;resize:vertical;background:#fff;color:#101828;font-family:inherit;"></textarea>
+            <button type="button" onClick="{{ copyMonthly }}" style="min-height:48px;padding:13px 20px;border:none;border-radius:9px;background:#1b2f5e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;" style-hover="background:#23417f;">{{ mCopyLabel }}</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLoading }}">
+      <div data-screen-label="生成中" style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(32px,9vw,44px) 20px;display:flex;flex-direction:column;align-items:center;gap:24px;">
+        <div style="width:38px;height:38px;border:3px solid #e7e9ee;border-top-color:#1b2f5e;border-radius:50%;animation:spin .9s linear infinite;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">ノートを読んでいます</div>
+          <div style="font-size:13px;color:#6b7280;">30秒ほどかかることがあります</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:{{ s.color }};">
+              <span style="width:18px;text-align:center;font-size:12px;font-weight:700;">{{ s.mark }}</span>
+              <span>{{ s.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isResult }}">
+      <div data-screen-label="振り返り結果" style="display:flex;flex-direction:column;gap:14px;">
+        <sc-if value="{{ needBackup }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 15px;border:1px solid #f0d9a8;background:#fdf8ec;border-radius:12px;">
+            <div style="font-size:13px;line-height:1.7;color:#7a5410;flex:1 1 220px;">未バックアップのコメントが <b>{{ unbacked }}件</b> たまりました。月末まとめ用に保存しておきましょう。</div>
+            <button type="button" onClick="{{ exportLogs }}" style="min-height:44px;padding:10px 18px;border:1px solid #7a5410;border-radius:8px;background:#fff;color:#7a5410;font-size:14px;font-weight:700;cursor:pointer;" style-hover="background:#fbefd4;">バックアップを保存</button>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button type="button" onClick="{{ copy }}" style="flex:1 1 200px;min-height:48px;padding:13px 20px;border:none;border-radius:9px;background:#1b2f5e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;" style-hover="background:#23417f;">{{ copyLabel }}</button>
+          <button type="button" onClick="{{ printHomework }}" style="flex:1 1 200px;min-height:48px;padding:13px 20px;border:1px solid #1b2f5e;border-radius:9px;background:#fff;color:#1b2f5e;font-size:15px;font-weight:700;cursor:pointer;" style-hover="background:#eef2fb;">宿題をPDFで出す</button>
+          <button type="button" onClick="{{ reset }}" style="flex:1 1 140px;min-height:48px;padding:13px 18px;border:1px solid #d7dbe3;border-radius:9px;background:#fff;color:#475467;font-size:14px;font-weight:700;cursor:pointer;" style-hover="border-color:#1b2f5e;color:#1b2f5e;">別のノートで作る</button>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:#8b93a1;">各項目はタップして直せます。コピーするとこのままの形でLINEに貼れます。「宿題をPDFで出す」を押すと印刷画面が開くので、送信先で「PDFに保存」を選んでください。</div>
+
+        <sc-if value="{{ manual }}">
+          <div style="background:#fff;border:1px solid #dbe4f4;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+              <div style="font-size:12px;line-height:1.7;color:#475467;">このブラウザでは自動コピーが使えません。下の枠を長押し（PCは Ctrl/⌘+C）でコピーしてください。</div>
+              <button type="button" onClick="{{ closeManual }}" style="flex:none;border:none;background:none;color:#9aa3af;font-size:16px;cursor:pointer;padding:2px 4px;line-height:1;min-height:32px;">×</button>
+            </div>
+            <textarea ref="{{ setTaRef }}" readOnly="{{ true }}" rows="10" value="{{ manualText }}" onFocus="{{ selectAll }}" onClick="{{ selectAll }}" style="width:100%;padding:12px;border:1px solid #d7dbe3;border-radius:8px;font-size:14px;line-height:1.8;background:#fbfcfe;color:#101828;resize:vertical;"></textarea>
+          </div>
+        </sc-if>
+
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;padding:clamp(18px,4.5vw,26px) clamp(15px,4vw,24px);display:flex;flex-direction:column;font-size:15px;line-height:1.9;">
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0;">
+            <span style="color:#475467;font-weight:700;flex:none;">学生様名:</span>
+            <span contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="name" onInput="{{ onEdit }}" style="outline:none;">{{ d.name }}</span>
+            <span>さん</span>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0;border-top:1px solid #f0f1f5;">
+            <span style="color:#475467;font-weight:700;flex:none;">授業日：</span>
+            <span contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="lessonDate" onInput="{{ onEdit }}" style="outline:none;font-variant-numeric:tabular-nums;">{{ d.lessonDate }}</span>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0;border-top:1px solid #f0f1f5;">
+            <span style="color:#475467;font-weight:700;flex:none;">科目：</span>
+            <span contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="subject" onInput="{{ onEdit }}" style="outline:none;">{{ d.subject }}</span>
+          </div>
+
+          <div style="padding:10px 0;border-top:1px solid #f0f1f5;display:flex;flex-direction:column;gap:2px;">
+            <div style="color:#475467;font-weight:700;">授業内容:</div>
+            <div contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="summary" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;">{{ d.summary }}</div>
+          </div>
+
+          <div style="padding:10px 0;border-top:1px solid #f0f1f5;display:flex;flex-direction:column;gap:2px;">
+            <div style="color:#475467;font-weight:700;">理解できた点：</div>
+            <div contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="understood" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;">{{ understoodText }}</div>
+          </div>
+
+          <div style="padding:10px 0;border-top:1px solid #f0f1f5;display:flex;flex-direction:column;gap:2px;">
+            <div style="color:#475467;font-weight:700;">理解できなかった点：</div>
+            <div contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="notUnderstood" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;">{{ notUnderstoodText }}</div>
+          </div>
+
+          <div style="padding:10px 0;border-top:1px solid #f0f1f5;display:flex;flex-direction:column;gap:2px;">
+            <div style="color:#475467;font-weight:700;">次回の授業内容：</div>
+            <div contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="nextContent" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;">{{ d.nextContent }}</div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0;border-top:1px solid #f0f1f5;">
+            <span style="color:#475467;font-weight:700;flex:none;">次回の授業日:</span>
+            <span contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="nextDate" onInput="{{ onEdit }}" style="outline:none;font-variant-numeric:tabular-nums;">{{ d.nextDate }}</span>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:10px 0;border-top:1px solid #f0f1f5;">
+            <span style="color:#475467;font-weight:700;flex:none;">宿題：</span>
+            <span>プリント</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:12px;border-top:1px solid #f0f1f5;background:#f7f9fd;border-radius:8px;">
+            <sc-if value="{{ hwMulti }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <span style="color:#8b93a1;font-size:12px;font-weight:700;">難易度を選ぶ（選んだものがPDFになります）</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <sc-for list="{{ hwLevels }}" as="lv" hint-placeholder-count="3">
+                    <button type="button" data-i="{{ lv.i }}" onClick="{{ pickHwLevel }}" style="min-height:44px;padding:10px 20px;border:1px solid {{ lv.border }};border-radius:8px;background:{{ lv.bg }};color:{{ lv.fg }};font-size:14px;font-weight:{{ lv.weight }};cursor:pointer;" style-hover="border-color:#1b2f5e;">{{ lv.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <span style="color:#8b93a1;font-size:12px;font-weight:700;">プリントの内容（LINE本文には入りません・タップで編集可／$…$ はPDFで数式として組まれます）</span>
+            <span contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="homework" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;line-height:1.7;font-size:13px;color:#475467;">{{ hwText }}</span>
+          </div>
+
+          <div style="padding:10px 0;border-top:1px solid #f0f1f5;display:flex;flex-direction:column;gap:2px;">
+            <div style="color:#475467;font-weight:700;">コメント：</div>
+            <div contentEditable="{{ true }}" suppressContentEditableWarning="{{ true }}" data-field="comment" onInput="{{ onEdit }}" style="outline:none;white-space:pre-wrap;line-height:2;">{{ d.comment }}</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;やさしく励ます&quot;,&quot;端的・事務的&quot;,&quot;丁寧・フォーマル&quot;],&quot;default&quot;:&quot;やさしく励ます&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;振り返り&quot;,&quot;description&quot;:&quot;AIが書く文章のトーン&quot;}}">
+var SUBJECTS = ['物理基礎','化学基礎','生物基礎','地学基礎','現代文','古文','漢文','世界史','日本史','政治経済','小論文','物理','化学','生物','地学','数学','算数','英語','国語','地理','倫理','情報','理科','社会'];
+var DOW = ['日','月','火','水','木','金','土'];
+var LOG_KEY = 'furikaeri_comment_log_v1';
+var BK_KEY = 'furikaeri_last_backup_v1';
+var KEY_KEY = 'furikaeri_anthropic_key_v1';
+var MODEL = 'claude-sonnet-5-5';
+
+var SAMPLE = {
+  name: '土田虹', subject: '物理',
+  lessonDate: '7月27日 21時00分〜22時00分',
+  summary: '試験対策を中心に、力学の運動方程式と等加速度運動の問題演習を行いました。図に力を書き出してから式を立てる手順を繰り返し確認しました。',
+  understood: ['物体にはたらく力を図に書き出してから式を立てる流れ', '等加速度運動の3つの公式の使い分け'],
+  notUnderstood: ['斜面上の運動で重力を分解するときの角度の取り方', '摩擦力の向きを状況ごとに判断すること'],
+  nextContent: '斜面と摩擦をふくむ力学の演習、試験範囲の総復習',
+  nextDate: '8月3日 21時00分〜22時00分',
+  homeworkSets: [
+    { level: '基礎', problems: '(1) 初速度 $v_0 = 2.0\\,\\mathrm{m/s}$、加速度 $a = 3.0\\,\\mathrm{m/s^2}$ で等加速度運動する物体の、$t = 4.0\\,\\mathrm{s}$ 後の速さ $v$ を求めてください。（等加速度運動の公式 $v = v_0 + at$ を使用）\n(2) 質量 $m = 2.0\\,\\mathrm{kg}$ の物体に $F = 8.0\\,\\mathrm{N}$ の力だけがはたらくとき、加速度の大きさ $a$ を求めてください。（運動方程式 $ma = F$ を使用）' },
+    { level: '標準', problems: '(1) 初速度 $v_0 = 4.0\\,\\mathrm{m/s}$ で斜面を上る物体が $t = 2.0\\,\\mathrm{s}$ 後に静止しました。斜面方向の加速度の大きさ $a$ を求めてください。（等加速度運動の公式 $v = v_0 + at$ を使用）\n(2) 水平面上で質量 $m = 3.0\\,\\mathrm{kg}$ の物体を $F = 12\\,\\mathrm{N}$ の力で引いたところ、加速度は $a = 2.0\\,\\mathrm{m/s^2}$ でした。動摩擦力の大きさ $f$ を求めてください。（運動方程式 $ma = F - f$ を使用）' },
+    { level: '応用', problems: '(1) 傾角 $\\theta = 30^{\\circ}$ のなめらかな斜面を、初速度 $v_0 = 6.0\\,\\mathrm{m/s}$ で物体が上りました。斜面上を進む最大距離 $L$ を求めてください（$g = 9.8\\,\\mathrm{m/s^2}$）。（重力の斜面方向成分から加速度を出し、等加速度運動の公式 $v^2 - v_0^2 = 2aL$ を使用）\n(2) 傾角 $\\theta = 30^{\\circ}$ の斜面上で質量 $m = 2.0\\,\\mathrm{kg}$ の物体が一定の速さで滑り下りています。動摩擦係数 $\\mu$ を求めてください。（斜面方向のつり合い $mg\\sin\\theta = \\mu mg\\cos\\theta$ を使用）' }
+  ],
+  homeworkLevel: 1,
+  comment: '授業おつかれさまでした！\n今日は試験対策を中心に扱いました！理解する力はすごく高いです！！また疑問点があれば都度質問を投げかけてくれ、積極的に学習に取り組む姿勢がとても素晴らしいです！その素晴らしい気持ちを忘れずに、これからも一緒に学習を進めていきましょう！'
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var now = new Date();
+    this.state = {
+      screen: 'upload', files: [], name: '', subject: '', memo: '', step: 0, progress: 0, error: '', copied: false,
+      lessonDate: '', nextDate: '',
+      calTarget: '', calY: now.getFullYear(), calM: now.getMonth(), calD: 0, calH: 0,
+      lessonYM: '', mStudent: '', mYM: '', mText: '', mBusy: false, mCopied: false, logTick: 0, mPaste: '', mPasteName: ''
+    };
+    this.data = null;
+    this.logs = this.loadLogs();
+    var names = ['setKey','setMPaste','setMPasteName','genFromPaste','exportLogs','importLogs','pickHwLevel','generate','showSample','reset','onPick','onDragOver','onDrop','removeFile','setName','setSubject','setMemo','onEdit','copy','printHomework','esc','setTaRef','selectAll','closeManual','openCal','closeCal','shiftMonth','pickDay','pickTime','confirmCal','openMonthly','closeMonthly','pickMStudent','pickMYM','genMonthly','copyMonthly','clearMonthly','onEditMonthly'];
+    for (var i = 0; i < names.length; i++) this[names[i]] = this[names[i]].bind(this);
+  }
+
+  // --- 宿題の難易度 ---
+  normSets(sets, fallback) {
+    var out = [];
+    if (Array.isArray(sets)) {
+      sets.forEach(function (x, i) {
+        if (!x) return;
+        var p = typeof x === 'string' ? x : (x.problems || x.homework || '');
+        p = Array.isArray(p) ? p.join('\n') : String(p);
+        if (!p.trim()) return;
+        var lv = (typeof x === 'object' && x.level) ? String(x.level) : ['基礎', '標準', '応用'][i] || ('レベル' + (i + 1));
+        out.push({ level: lv, problems: p.trim() });
+      });
+    }
+    if (!out.length) out.push({ level: '標準', problems: String(fallback || this.state.memo || '').trim() });
+    return out.slice(0, 4);
+  }
+  hwSets() {
+    var d = this.data || SAMPLE;
+    if (d.homeworkSets && d.homeworkSets.length) return d.homeworkSets;
+    return [{ level: '標準', problems: d.homework || '' }];
+  }
+  hwIdx() {
+    var d = this.data || SAMPLE, n = this.hwSets().length, i = d.homeworkLevel | 0;
+    return i >= 0 && i < n ? i : 0;
+  }
+  hwText() {
+    var s = this.hwSets()[this.hwIdx()];
+    return s ? (s.problems || '') : '';
+  }
+  pickHwLevel(e) {
+    if (!this.data) return;
+    this.data.homeworkLevel = +e.currentTarget.dataset.i;
+    this.forceUpdate();
+    var txt = this.hwText(), self = this;
+    setTimeout(function () {
+      var el = document.querySelector('[data-field="homework"]');
+      if (el && el.innerText.replace(/\n$/, '') !== txt) el.innerText = txt;
+      self._x = 0;
+    }, 0);
+  }
+
+  fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+  fmtSlot(m, d, h) { return (m + 1) + '月' + d + '日 ' + h + '時00分〜' + (h + 1) + '時00分'; }
+
+  // --- calendar ---
+  openCal(e) {
+    var t = e.currentTarget.dataset.target;
+    var now = new Date();
+    this.setState({ calTarget: t, calD: 0, calH: 0, calY: now.getFullYear(), calM: now.getMonth() });
+  }
+  closeCal() { this.setState({ calTarget: '' }); }
+  shiftMonth(e) {
+    var dir = +e.currentTarget.dataset.dir;
+    var m = this.state.calM + dir, y = this.state.calY;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    this.setState({ calY: y, calM: m, calD: 0 });
+  }
+  pickDay(e) { this.setState({ calD: +e.currentTarget.dataset.day }); }
+  pickTime(e) { this.setState({ calH: +e.currentTarget.dataset.hour }); }
+  confirmCal() {
+    var s = this.state;
+    if (!s.calD || !s.calH) return;
+    var v = this.fmtSlot(s.calM, s.calD, s.calH);
+    var patch = { calTarget: '' };
+    if (s.calTarget === 'lesson') { patch.lessonDate = v; patch.lessonYM = s.calY + '-' + s.calM; if (this.data) this.data.lessonDate = v; }
+    else { patch.nextDate = v; if (this.data) this.data.nextDate = v; }
+    this.setState(patch);
+  }
+
+  // --- 今月分のコメント保存（端末内） ---
+  loadLogs() {
+    var raw = null;
+    try { raw = window.localStorage.getItem(LOG_KEY); } catch (e) { return []; }
+    var list = [];
+    try { list = JSON.parse(raw || '[]'); } catch (e) { list = []; }
+    if (!Array.isArray(list)) list = [];
+    return this.prune(list);
+  }
+  // 当月と前月だけ残す（月末のまとめ生成に必要な分）
+  prune(list) {
+    var now = new Date(), keep = {};
+    keep[now.getFullYear() + '-' + now.getMonth()] = 1;
+    var p = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    keep[p.getFullYear() + '-' + p.getMonth()] = 1;
+    return list.filter(function (r) { return r && keep[r.ym]; });
+  }
+  persistLogs() {
+    try { window.localStorage.setItem(LOG_KEY, JSON.stringify(this.logs)); } catch (e) {}
+  }
+  currentYM() {
+    if (this.state.lessonYM) return this.state.lessonYM;
+    var now = new Date();
+    return now.getFullYear() + '-' + now.getMonth();
+  }
+  saveLog() {
+    var d = this.data;
+    if (!d || !d.comment) return;
+    var rec = {
+      ym: this.currentYM(), name: (d.name || '').trim() || 'ご本人',
+      date: d.lessonDate || '', subject: d.subject || '',
+      summary: d.summary || '', comment: d.comment, savedAt: Date.now()
+    };
+    var i = -1;
+    for (var k = 0; k < this.logs.length; k++) {
+      if (this.logs[k].name === rec.name && this.logs[k].date === rec.date && this.logs[k].ym === rec.ym) { i = k; break; }
+    }
+    if (i >= 0) this.logs[i] = rec; else this.logs.push(rec);
+    this.logs = this.prune(this.logs);
+    this.persistLogs();
+    this.setState({ logTick: this.state.logTick + 1 });
+  }
+  ymLabel(ym) {
+    var p = String(ym).split('-');
+    return p[0] + '年' + (+p[1] + 1) + '月';
+  }
+  monthOptions() {
+    var seen = {}, out = [];
+    this.logs.forEach(function (r) { if (!seen[r.ym]) { seen[r.ym] = 1; out.push(r.ym); } });
+    return out.sort().reverse();
+  }
+  mRecords() {
+    var s = this.state;
+    return this.logs.filter(function (r) {
+      return (!s.mYM || r.ym === s.mYM) && (!s.mStudent || r.name === s.mStudent);
+    }).sort(function (a, b) { return a.savedAt - b.savedAt; });
+  }
+  openMonthly() {
+    var opts = this.monthOptions();
+    // 月初（10日まで）は前月分を優先して選ぶ
+    var now = new Date(), p = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var prevYM = p.getFullYear() + '-' + p.getMonth();
+    var ym = (now.getDate() <= 10 && opts.indexOf(prevYM) >= 0) ? prevYM : (opts[0] || this.currentYM());
+    var names = [], seen = {};
+    this.logs.forEach(function (r) { if (r.ym === ym && !seen[r.name]) { seen[r.name] = 1; names.push(r.name); } });
+    this.setState({
+      screen: 'monthly', mText: '', mCopied: false, error: '',
+      mYM: ym, mStudent: names[0] || ''
+    });
+  }
+  closeMonthly() { this.setState({ screen: 'upload', mText: '', error: '' }); }
+  studentNames() {
+    var s = this.state, seen = {}, out = [];
+    this.logs.forEach(function (r) {
+      if (s.mYM && r.ym !== s.mYM) return;
+      if (!seen[r.name]) { seen[r.name] = 1; out.push(r.name); }
+    });
+    return out;
+  }
+  pickMStudent(e) { this.setState({ mStudent: e.currentTarget.dataset.v, mText: '', mCopied: false }); }
+  pickMYM(e) {
+    var ym = e.currentTarget.dataset.v, cur = this.state.mStudent;
+    var names = [], seen = {};
+    this.logs.forEach(function (r) { if (r.ym === ym && !seen[r.name]) { seen[r.name] = 1; names.push(r.name); } });
+    this.setState({ mYM: ym, mStudent: seen[cur] ? cur : (names[0] || ''), mText: '', mCopied: false });
+  }
+  onEditMonthly(e) { this.setState({ mText: e.currentTarget.value, mCopied: false }); }
+  clearMonthly() {
+    var s = this.state;
+    if (!window.confirm(this.ymLabel(s.mYM) + '・' + s.mStudent + ' の保存済みコメントを削除します。よろしいですか？')) return;
+    this.logs = this.logs.filter(function (r) { return !(r.ym === s.mYM && r.name === s.mStudent); });
+    this.persistLogs();
+    var names = this.studentNames();
+    this.setState({ mStudent: names[0] || '', mText: '', logTick: s.logTick + 1 });
+  }
+  setMPaste(e) { this.setState({ mPaste: e.currentTarget.value }); }
+  setMPasteName(e) { this.setState({ mPasteName: e.currentTarget.value }); }
+  genFromPaste() {
+    var s = this.state;
+    if (!s.mPaste.trim() || !s.mPasteName.trim()) return;
+    var p = new Date(), pm = new Date(p.getFullYear(), p.getMonth() - 1, 1);
+    var ym = p.getDate() <= 10 ? pm.getFullYear() + '-' + pm.getMonth() : p.getFullYear() + '-' + p.getMonth();
+    return this.genMonthly({ name: s.mPasteName.trim().replace(/(さん|くん|様)$/, ''), ym: s.mYM || ym, body: s.mPaste.trim().slice(0, 14000) });
+  }
+  componentDidMount() {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  }
+  lastBackupAt() {
+    try { return +(window.localStorage.getItem(BK_KEY) || 0); } catch (e) { return 0; }
+  }
+  unbackedCount() {
+    var at = this.lastBackupAt();
+    return this.logs.filter(function (r) { return (r.savedAt || 0) > at; }).length;
+  }
+  exportLogs() {
+    try { window.localStorage.setItem(BK_KEY, String(Date.now())); } catch (e) {}
+    setTimeout(function () { this.setState({ logTick: this.state.logTick + 1 }); }.bind(this), 0);
+    var blob = new Blob([JSON.stringify(this.logs, null, 1)], { type: 'application/json' });
+    var a = document.createElement('a'), d = new Date();
+    a.href = URL.createObjectURL(blob);
+    a.download = '振り返りバックアップ_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  importLogs(e) {
+    var f = e.currentTarget.files && e.currentTarget.files[0], self = this;
+    if (!f) return;
+    f.text().then(function (txt) {
+      var list = JSON.parse(txt);
+      if (!Array.isArray(list)) throw new Error();
+      list.forEach(function (rec) {
+        if (!rec || !rec.comment) return;
+        var dup = self.logs.some(function (r) { return r.name === rec.name && r.date === rec.date && r.ym === rec.ym && r.comment === rec.comment; });
+        if (!dup) self.logs.push(rec);
+      });
+      self.persistLogs();
+      self.setState({ logTick: self.state.logTick + 1, error: '' });
+    }).catch(function () { self.setState({ error: 'バックアップファイルを読み込めませんでした。' }); });
+    e.currentTarget.value = '';
+  }
+  async genMonthly(opt) {
+    var src = opt && opt.body ? opt : null;
+    var recs = src ? [] : this.mRecords();
+    if (!src && !recs.length) return;
+    var who = src ? src.name : this.state.mStudent;
+    var ymL = this.ymLabel(src ? src.ym : this.state.mYM);
+    this.setState({ mBusy: true, error: '', mText: '', mCopied: false });
+    try {
+      var body = src ? src.body : recs.map(function (r, i) {
+        return '【' + (i + 1) + '回目' + (r.date ? '／' + r.date : '') + (r.subject ? '／' + r.subject : '') + '】\n' +
+          (r.summary ? '授業内容: ' + r.summary + '\n' : '') + 'コメント: ' + r.comment;
+      }).join('\n\n').slice(0, 14000);
+      var prompt = [
+        'あなたはオンライン個別指導塾の講師です。以下は「' + who + '」様への、' + ymL + 'の各回の振り返りコメントです' + (src ? '（LINEから貼り付けたもの。日時・スタンプなどの余計な文字は無視する）' : '') + '。',
+        'これらをまとめて、保護者様と学生様に送る「今月の振り返りコメント」を1本作成してください。',
+        '',
+        body,
+        '',
+        '条件:',
+        '・全文を敬体（です・ます調）で書く。タメ口・常体は使わない。',
+        '・8〜12文程度。1か月を通しての成長・定着した内容・引き続き課題となる点・来月に向けた方針の順にまとめる。',
+        '・毎回のコメントに共通して現れた良い点は、1か月の伸びとしてまとめて具体的にほめる。',
+        '・明るく元気な調子で、多くの文の語尾を「！」で終える（特にほめる箇所は「！！」も使う）。',
+        '・1文目は「' + who + '様、今月もお疲れさまでした！」で始める。',
+        '・上のコメントに書かれていない事実は創作しない。' + (src ? '' : '回数は' + recs.length + '回として扱う。'),
+        '・ノートの取り方やノートのきれいさはほめない（ノートは講師が書いたもの）。',
+        '',
+        '出力はコメント本文のみ。見出しや箇条書き、説明文は付けない。'
+      ].join('\n');
+      var out = await this.ask(prompt, null, 1600);
+      this.setState({ mText: this.plainMath(this.polite(String(out || '').trim())), mBusy: false });
+    } catch (e) {
+      this.setState({ mBusy: false, error: 'まとめの生成に失敗しました。通信環境を確認して、もう一度お試しください。' });
+    }
+  }
+  async copyMonthly() {
+    var text = this.state.mText;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.setState({ mCopied: true });
+      setTimeout(function () { this.setState({ mCopied: false }); }.bind(this), 2200);
+    } catch (e) {
+      this.setState({ manual: true, manualText: text });
+    }
+  }
+
+  parseFileName(filename) {
+    var base = filename.replace(/\.pdf$/i, '');
+    var tokens = base.split(/[_\-–—\s　()（）[\]]+/).filter(Boolean);
+    var subject = '';
+    for (var i = 0; i < SUBJECTS.length; i++) if (base.indexOf(SUBJECTS[i]) >= 0) { subject = SUBJECTS[i]; break; }
+    var name = (tokens[0] || base).trim();
+    if (subject && name !== subject && name.indexOf(subject) >= 0) name = name.split(subject)[0].trim() || name;
+    name = name.replace(/[0-9０-９]+/g, '').replace(/(さん|くん|ちゃん|様)$/, '').trim();
+    return { name: name, subject: subject };
+  }
+
+  // 手書きのコントラストを上げる（グレースケール＋レベル補正）
+  boost(cx, w, h) {
+    try {
+      var d = cx.getImageData(0, 0, w, h), p = d.data, i, g, lut = new Uint8Array(256);
+      for (i = 0; i < 256; i++) {
+        var v = (i - 30) / 185;
+        lut[i] = Math.max(0, Math.min(255, Math.round(255 * Math.pow(Math.max(0, Math.min(1, v)), 0.9))));
+      }
+      for (i = 0; i < p.length; i += 4) {
+        g = lut[(p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114) | 0];
+        p[i] = p[i + 1] = p[i + 2] = g;
+      }
+      cx.putImageData(d, 0, 0);
+    } catch (e) { /* ignore */ }
+  }
+
+  // ページを小分けにして送り、手書きノートを文字起こしする
+  async transcribe(images) {
+    var BATCH = 2, out = [], b, errs = [];
+    var jobs = [];
+    for (b = 0; b < images.length; b += BATCH) jobs.push(images.slice(b, b + BATCH));
+    for (b = 0; b < jobs.length; b++) {
+      var part = await this.fitImages(jobs[b]);
+      if (!part.length) continue;
+      var from = b * BATCH + 1, to = from + part.length - 1;
+      var p = [
+        '添付画像は講師が授業中に書いたノートの ' + from + '〜' + to + 'ページ目です。',
+        '書かれている内容をできるだけ忠実に文字起こししてください。',
+        '・板書の見出し・説明・例題・計算過程・図の説明をすべて拾う。',
+        '・数式は $…$ のLaTeX記法で書く。',
+        '・読めない箇所は［判読不能］と書く。推測で創作しない。',
+        '・解説や要約はせず、書かれていることだけを出力する。'
+      ].join('\n');
+      var r = '';
+      try {
+        r = await this.ask(p, part, 2500, true);
+      } catch (e) {
+        var m = (e && e.message) || '';
+        if (/too large/i.test(m) && part.length > 1) {
+          // 1ページずつに落として再試行
+          for (var q = 0; q < part.length; q++) {
+            try { r += (r ? '\n' : '') + await this.ask(p, [part[q]], 2500, true); } catch (e2) { errs.push(e2); }
+          }
+        } else errs.push(e);
+      }
+      if (r && r.trim()) out.push('［' + from + '〜' + to + 'ページ］\n' + r.trim());
+      this.setState({ step: 1, progress: Math.round(((b + 1) / jobs.length) * 100) });
+    }
+    if (!out.length && errs.length) {
+      var em = (errs[0] && errs[0].message) || '';
+      throw new Error('ノートの読み取りでエラーが発生しました' + (em ? '（' + em.slice(0, 120) + '）' : '') + '。少し待ってからもう一度お試しください。');
+    }
+    return out.join('\n\n');
+  }
+
+  // 送信上限(262144B)に収める。画質は落とさず、まずページ数を絞る
+  async fitImages(images) {
+    var BUDGET = 165000, MINQ = 0.62, MINW = 1100;
+    var sum = function (a) { return a.reduce(function (t, x) { return t + x.length; }, 0); };
+    var list = images.slice();
+    // 1) 1枚でも予算を超えるなら、その1枚を予算内まで落とす
+    while (list.length > 1 && sum(list) > BUDGET) list = list.slice(0, list.length - 1);
+    for (var pass = 0; pass < 5 && sum(list) > BUDGET; pass++) {
+      var ratio = Math.max(0.72, Math.sqrt(BUDGET / sum(list)) * 0.95);
+      var next = [];
+      for (var j = 0; j < list.length; j++) next.push(await this.shrink(list[j], ratio, MINQ, MINW));
+      list = next;
+    }
+    this._sentPages = list.length;
+    this._dropped = images.length - list.length;
+    return list;
+  }
+
+  shrink(b64, ratio, q, minW) {
+    return new Promise(function (res) {
+      var im = new Image();
+      im.onload = function () {
+        var w = Math.max(minW || 900, Math.round(im.width * ratio));
+        var h = Math.round(im.height * (w / im.width));
+        var cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+        cx.drawImage(im, 0, 0, w, h);
+        res(cv.toDataURL('image/jpeg', q).split(',')[1]);
+      };
+      im.onerror = function () { res(b64); };
+      im.src = 'data:image/jpeg;base64,' + b64;
+    });
+  }
+
+  // --- Claude API（Anthropic）を直接呼ぶ。APIキーはこの端末のブラウザにだけ保存 ---
+  getKey(force) {
+    var k = '';
+    try { k = window.localStorage.getItem(KEY_KEY) || ''; } catch (e) { k = ''; }
+    if (!k || force) {
+      var v = window.prompt('Claude APIキー（sk-ant-… で始まるもの）を貼り付けてください。\nこの端末のブラウザにだけ保存されます。', k || '');
+      if (v === null) return k;
+      k = v.trim();
+      try { if (k) window.localStorage.setItem(KEY_KEY, k); else window.localStorage.removeItem(KEY_KEY); } catch (e) {}
+    }
+    return k;
+  }
+  setKey() { this.getKey(true); this.setState({ logTick: this.state.logTick + 1 }); }
+
+  async ask(prompt, images, maxTokens, plainText) {
+    var key = this.getKey(false);
+    if (!key) throw new Error('Claude APIキーが設定されていません。右上の「APIキー」から設定してください。');
+    var sys = plainText
+      ? 'あなたは手書きノートを正確に文字起こしするアシスタントです。日本語のプレーンテキストのみを出力します。JSONやコードブロックは使いません。'
+      : 'あなたはオンライン個別指導塾の講師をサポートするアシスタントです。指示されたJSON形式のみを日本語で出力します。';
+    var content = images && images.length
+      ? images.map(function (b64) { return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } }; }).concat([{ type: 'text', text: prompt }])
+      : prompt;
+    var res;
+    try {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens || 2000, system: sys, messages: [{ role: 'user', content: content }] })
+      });
+    } catch (e) {
+      throw new Error('Claude APIにつながりませんでした。通信環境を確認してください。');
+    }
+    var j = null;
+    try { j = await res.json(); } catch (e) { j = null; }
+    if (!res.ok) {
+      var em = (j && j.error && j.error.message) || ('HTTP ' + res.status);
+      if (res.status === 401) { try { window.localStorage.removeItem(KEY_KEY); } catch (e) {} throw new Error('APIキーが正しくありません。右上の「APIキー」から設定し直してください。'); }
+      if (res.status === 400 && /credit|balance/i.test(em)) throw new Error('APIのクレジット残高が足りません。console.anthropic.com でチャージしてください。');
+      if (res.status === 413 || /too large|exceed/i.test(em)) throw new Error('request too large: ' + em);
+      if (res.status === 429 || res.status === 529) throw new Error('Claude APIが混み合っています。少し待ってからお試しください。');
+      throw new Error('Claude APIでエラーが発生しました（' + em.slice(0, 120) + '）');
+    }
+    return (j && Array.isArray(j.content) ? j.content : []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
+  }
+
+  // LINE本文用：LaTeX記法をスマホでそのまま読める文字に直す
+  plainMath(text) {
+    var s = String(text || '');
+    var SUB = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', 'x': 'ₓ', 'a': 'ₐ', 'n': 'ₙ', 'i': 'ᵢ', 't': 'ₜ' };
+    var SUP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', 'n': 'ⁿ', '-': '⁻', '+': '⁺' };
+    var SYM = {
+      times: '×', cdot: '·', div: '÷', pm: '±', mp: '∓', approx: '≒', neq: '≠', leq: '≦', geq: '≧', ll: '≪', gg: '≫',
+      rightarrow: '→', leftarrow: '←', Rightarrow: '⇒', Leftarrow: '⇐', leftrightarrow: '↔',
+      longrightarrow: '→', rightleftharpoons: '⇄', to: '→', infty: '∞', propto: '∝', therefore: 'ゆえに',
+      alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ',
+      pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', phi: 'φ', omega: 'ω', Omega: 'Ω', circ: '°', degree: '°',
+      sin: 'sin', cos: 'cos', tan: 'tan', log: 'log', ln: 'ln', sum: 'Σ', int: '∫'
+    };
+    var conv = function (m) {
+      var t = m;
+      t = t.replace(/\\(?:mathrm|mathbf|mathit|text|bm|vec|overrightarrow)\s*\{([^{}]*)\}/g, '$1');
+      t = t.replace(/\\sqrt\s*\{(\w)\}/g, '√$1');
+      t = t.replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)');
+      t = t.replace(/\\sqrt\s*(\w)/g, '√$1');
+      // 分数は内側から順に（入れ子の分子・分母にも対応）
+      var wrap = function (x) {
+        var s2 = x.trim();
+        return /^[-+]?[\w.°²³⁴√]+$/.test(s2) ? s2 : '(' + s2 + ')';
+      };
+      for (var f = 0; f < 6; f++) {
+        var before = t;
+        t = t.replace(/\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, function (a, num, den) {
+          return wrap(num) + '/' + wrap(den);
+        });
+        if (t === before) break;
+      }
+      t = t.replace(/\\,|\\;|\\:|\\!|\\quad|\\qquad/g, ' ');
+      t = t.replace(/\\\\/g, ' ');
+      t = t.replace(/\^\s*\{\s*\\circ\s*\}|\^\s*\\circ/g, '°');
+      t = t.replace(/\\(?:left|right)(?![a-zA-Z])/g, '');
+      t = t.replace(/\\([a-zA-Z]+)/g, function (all, w) { return SYM[w] !== undefined ? SYM[w] : w; });
+      // ギリシャ文字の直後の空白だけ詰める（演算子・矢印の前後の空白は残す）
+      t = t.replace(/([αβγδΔεθλμπρστφωΩ]) +(?=[A-Za-z0-9(])/g, '$1');
+      t = t.replace(/\^\s*\{([^{}]*)\}|\^\s*([\w+\-])/g, function (all, br, one) {
+        var body = br !== undefined ? br : one, o = '', ok = true;
+        for (var i = 0; i < body.length; i++) {
+          if (SUP[body[i]]) o += SUP[body[i]];
+          else if (body[i] === '°') o += '°';
+          else { ok = false; break; }
+        }
+        return ok ? o : '^' + body;
+      });
+      t = t.replace(/_\s*\{([^{}]*)\}|_\s*(\w)/g, function (all, br, one) {
+        var body = br !== undefined ? br : one, o = '', ok = true;
+        for (var i = 0; i < body.length; i++) {
+          if (SUB[body[i]]) o += SUB[body[i]]; else { ok = false; break; }
+        }
+        // 添字が下付き文字にできないとき（大文字・複数文字）はそのまま続けて書く
+        return ok ? o : (body.length > 1 ? '_' + body : body);
+      });
+      t = t.replace(/[{}]/g, '');
+      return t.replace(/ {2,}/g, ' ').trim();
+    };
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, function (a, inner) { return conv(inner); });
+    s = s.replace(/\$([^$\n]+?)\$/g, function (a, inner) { return conv(inner); });
+    s = s.replace(/\\\[([\s\S]+?)\\\]/g, function (a, inner) { return conv(inner); });
+    s = s.replace(/\\\(([\s\S]+?)\\\)/g, function (a, inner) { return conv(inner); });
+    if (/\\[a-zA-Z]+|\^\{|_\{/.test(s)) s = conv(s);
+    return s.replace(/ +([、。）])/g, '$1').replace(/（ +/g, '（');
+  }
+
+  // 生成文に混ざるタメ口の語尾を敬体に直す
+  polite(text) {
+    var s = String(text || '');
+    var END = '(?=[。．！!？?\\n]|$)';
+    var RULES = [
+      ['ましょう', 'ましょう'], ['ください', 'ください'], ['です', 'です'], ['ます', 'ます'],
+      ['でした', 'でした'], ['ました', 'ました'], ['ません', 'ません'],
+      ['てね', 'てください'], ['でね', 'でくださいね'],
+      ['てみよう', 'てみてください'], ['ていこう', 'ていきましょう'], ['ていきましょう', 'ていきましょう'],
+      ['よう', 'ましょう'],
+      ['ている', 'ています'], ['ていた', 'ていました'], ['てる', 'ています'], ['てた', 'ていました'],
+      ['できた', 'できていました'], ['できる', 'できます'], ['できない', 'できていません'],
+      ['だった', 'でした'], ['じゃない', 'ではありません'], ['ない', 'ありません'],
+      ['いる', 'います'], ['いた', 'いました'],
+      ['だ', 'です'], ['だね', 'ですね'], ['だよ', 'です'], ['だろう', 'でしょう'],
+      ['かな', 'かと思います']
+    ];
+    // 語尾の置換（長い語尾から順に判定）
+    var order = RULES.slice().sort(function (a, b) { return b[0].length - a[0].length; });
+    s = s.replace(/[^。．！!？?\n]+/g, function (sent) {
+      var t = sent.replace(/\s+$/, ''), tail = sent.slice(t.length);
+      for (var i = 0; i < order.length; i++) {
+        var from = order[i][0], to = order[i][1];
+        if (t.length > from.length && t.slice(-from.length) === from) {
+          if (from === to) return sent;
+          return t.slice(0, t.length - from.length) + to + tail;
+        }
+      }
+      return sent;
+    });
+    return s.replace(/君|ちゃん/g, 'さん');
+  }
+
+  parseJson(raw) {
+    var s = String(raw || ''), a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a < 0 || b < a) throw new Error('うまく読み取れませんでした。もう一度お試しください。');
+    return JSON.parse(s.slice(a, b + 1).replace(/,\s*([}\]])/g, '$1'));
+  }
+
+  async readPdf(file) {
+    var lib = window.pdfjsLib;
+    if (!lib) throw new Error('PDFの読み込み機能を準備できませんでした。ページを再読み込みしてください。');
+    lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    var pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    var text = '', i, c;
+    for (i = 1; i <= Math.min(pdf.numPages, 12); i++) {
+      c = await (await pdf.getPage(i)).getTextContent();
+      text += c.items.map(function (it) { return it.str; }).join(' ') + '\n';
+    }
+    var images = [];
+    // 手書きノートは端末OCRの壊れた文字が入っていることが多いので、
+    // 「ページ数に対して十分な量の、日本語を含むきちんとした本文」でなければ画像で読む
+    var clean = text.replace(/\s/g, '');
+    var jp = (clean.match(/[\u3040-\u30ff\u4e00-\u9fff]/g) || []).length;
+    var isTextPdf = clean.length >= 300 * pdf.numPages && jp / Math.max(1, clean.length) > 0.3;
+    if (!isTextPdf) {
+      text = '';
+      var n = Math.min(pdf.numPages, 10);
+      for (i = 1; i <= n; i++) {
+        var page = await pdf.getPage(i);
+        var base = page.getViewport({ scale: 1 });
+        // 手書きを読むため長辺1800px相当でレンダリング
+        var s = Math.min(2.5, 1800 / Math.max(base.width, base.height));
+        var vp = page.getViewport({ scale: Math.max(1, s) });
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+        await page.render({ canvasContext: cx, viewport: vp }).promise;
+        this.boost(cx, cv.width, cv.height);
+        images.push(cv.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      }
+    }
+    return { text: text, images: images, pages: pdf.numPages };
+  }
+
+  async generate() {
+    if (!this.state.files.length) return;
+    this.setState({ screen: 'loading', step: 0, progress: 0, error: '', calTarget: '' });
+    try {
+      var notes = '', images = [];
+      for (var i = 0; i < this.state.files.length; i++) {
+        var f = this.state.files[i];
+        var r = await this.readPdf(f);
+        notes += '【' + f.name + '】\n' + r.text + '\n';
+        for (var k = 0; k < r.images.length; k++) if (images.length < 10) images.push(r.images[k]);
+      }
+      this.setState({ step: 1 });
+      if (!notes.replace(/\s/g, '').length && !images.length && !this.state.memo) {
+        throw new Error('PDFから内容を読み取れませんでした。メモに授業内容を書いてから、もう一度お試しください。');
+      }
+      // 画像は解像度を保つため2ページずつ分割して文字起こしする
+      if (images.length) {
+        var t = await this.transcribe(images);
+        this._transcribed = t.replace(/\s/g, '').length;
+        if (t) notes += '\n【ノートの読み取り結果】\n' + t + '\n';
+        images = [];
+        if (!notes.replace(/\s/g, '').length && !this.state.memo) {
+          throw new Error('ノートの文字を読み取れませんでした。文字がはっきり写るように撮り直すか、メモ欄に授業内容を書いてからもう一度お試しください。');
+        }
+      }
+      this.setState({ step: 2 });
+      var prompt = [
+        '以下は講師が授業中に書いたノートの内容です。読んで、生徒本人に送る振り返りの各項目を埋めてください。',
+        '',
+        'ノートのファイル名: ' + this.state.files.map(function (x) { return x.name; }).join(' / '),
+        '学生様名: ' + (this.state.name || '（不明。ファイル名やノートから推測して name に入れる）'),
+        '科目: ' + (this.state.subject || '（不明。ファイル名やノートから推測して subject に入れる）'),
+        this.state.lessonDate ? '授業日: ' + this.state.lessonDate : '',
+        this.state.nextDate ? '次回の授業日: ' + this.state.nextDate : '',
+        this.state.memo ? '講師の補足メモ: ' + this.state.memo : '',
+        '',
+        notes ? '--- ノート ---\n' + notes.slice(0, 14000) : '',
+        '',
+        '条件:',
+        '・文体は「' + (this.props.tone || 'やさしく励ます') + '」。生徒本人が読むので、講師から生徒への語りかけにする。',
+        '・【最重要】すべての項目（summary / understood / notUnderstood / nextContent / homework / comment）を必ず敬体（です・ます調）で書く。タメ口・常体は絶対に使わない。',
+        '・禁止する語尾の例: 「〜だ」「〜だね」「〜だよ」「〜だろう」「〜しよう」「〜してね」「〜してみよう」「〜だった」「〜できた」「〜いる」「〜する」「〜だから」「〜けど」。',
+        '・言い換えの例: 「よくできた」→「よくできていました」／「頑張ろう」→「頑張っていきましょう」／「復習してね」→「復習をお願いします」／「理解できている」→「理解できています」／「解いてみよう」→「解いてみてください」。',
+        '・生徒は「学生様」として敬意をもって扱い、見下したり子ども扱いする表現は使わない。',
+        '・ノートに書かれていないことは創作しない。情報がない項目は空文字にする。',
+        '・summary（授業内容）は2〜3文。understood / notUnderstood は各1〜3個の短い文の配列。',
+        '・comment は4〜6文。具体的に良かった点をほめて、次回への励ましで終える。',
+        '・comment は明るく元気な調子で、ほとんどの文の語尾を「！」で終える（強くほめる箇所は「！！」も使う）。「。」で終わる文は多くても1文まで。',
+        '・comment の1文目は「授業おつかれさまでした！」で始める。',
+        '・comment に「ノートが読み取れませんでした」「内容を把握できませんでした」のような、読み取り失敗のお詫びや確認依頼は絶対に書かない。読み取れない場合は comment を空文字にする。',
+        '・添付のノートは講師本人が書いたものであり、学生様が書いたノートではない。「ノートがきれいにまとまっていますね」「よくノートが取れていました」のように、学生様のノートやノートの取り方をほめる表現は絶対に書かない。ほめるときは授業中の理解・取り組み・解けた内容についてほめる。',
+        '・宿題（homeworkSets）は必ず「今日のノートに出てきた問題と同じ解法プロセスで解ける類似問題」を新しく作って出題する。ノートの問題をそのまま写さず、数値・設定・文字を変えた別問題にする。',
+        '・homeworkSets は難易度別に必ず3セット作る。level は順に「基礎」「標準」「応用」とする。',
+        '　- 基礎: ノートの解法を1ステップで素直に使う、数値もきれいな確認問題。',
+        '　- 標準: ノートの問題と同程度の難しさ。解法プロセスをそのまま適用する。',
+        '　- 応用: 同じ解法を土台に、条件を1つ増やす／2つの手順を組み合わせる／文字式で一般化するなど、一段踏み込んだ問題。',
+        '・各セットの problems は2〜3問。各問を「(1) 」「(2) 」「(3) 」で始め、問と問の間は改行文字（\\n）で区切る。各問は問題文だけを書き、解答・解説・ヒントは書かない。',
+        '・problems の数式・数値・単位・化学式はすべてLaTeX記法で書く（文中はドル1つ、独立した式はドル2つで囲む）。例: 「初速度 $v_0 = 4.0\\\\,\\\\mathrm{m/s}$」「$$x = v_0 t + \\\\frac{1}{2} a t^2$$」「$\\\\mathrm{2H_2 + O_2 \\\\rightarrow 2H_2O}$」。分数は \\\\frac、平方根は \\\\sqrt、ベクトルは \\\\vec を使う。',
+        '・数式以外の日本語の文章部分はLaTeX記法で囲まない。',
+        '・LaTeX記法を使うのは problems（宿題のプリント）だけ。summary・understood・notUnderstood・nextContent・comment はLINEでそのまま読める普通の文字で書き、$ や \\\\mathrm、\\\\frac などは一切使わない。数式は「I_A = 1.2mA」ではなく「IA＝1.2mA」「速さ v＝8.0m/s」のように、添字や単位も普通の文字で書く。分数は「1/2」、2乗は「²」のように書く。',
+        '・各問には、ノートのどの解法プロセスを使うのかを問題文の末尾に丸括弧で短く添える（例:「（等加速度運動の公式を使用）」）。',
+        '・ノートに問題が見当たらない場合のみ、その日の授業内容から標準的な演習問題を同じ形式で作る。',
+        '',
+        '次のJSONのみを出力（説明文なし）:',
+        '{"name":"","subject":"","summary":"","understood":[],"notUnderstood":[],"nextContent":"","homeworkSets":[{"level":"基礎","problems":""},{"level":"標準","problems":""},{"level":"応用","problems":""}],"comment":""}'
+      ].filter(Boolean).join('\n');
+      var j = this.parseJson(await this.ask(prompt, images, 3200));
+      var got = [j.summary, j.nextContent, (j.understood || []).join(''), (j.notUnderstood || []).join('')].join('').replace(/\s/g, '');
+      if (got.length < 10 && !this.state.memo) {
+        var hint = this._transcribed ? '（読み取り結果 ' + this._transcribed + ' 文字）' : '（読み取り結果が空でした）';
+        throw new Error('振り返りの生成がうまくいきませんでした' + hint + '。もう一度「振り返りを作る」を押してください。');
+      }
+      var pol = this.polite;
+      ['summary', 'nextContent', 'comment'].forEach(function (k) { if (j[k]) j[k] = pol(j[k]); });
+      ['understood', 'notUnderstood'].forEach(function (k) {
+        if (Array.isArray(j[k])) j[k] = j[k].map(function (x) { return pol(x); });
+        else if (j[k]) j[k] = pol(j[k]);
+      });
+      this.setState({ step: 3 });
+      var arr = function (v) {
+        if (Array.isArray(v)) return v.map(function (x) { return String(x).trim(); }).filter(Boolean);
+        return v ? [String(v)] : [];
+      };
+      this.data = {
+        name: this.state.name || (j.name || '').replace(/(さん|くん|様)$/, '') || 'ご本人',
+        subject: this.state.subject || j.subject || '',
+        lessonDate: this.state.lessonDate || '',
+        summary: this.plainMath(j.summary || ''),
+        understood: arr(j.understood).map(this.plainMath, this),
+        notUnderstood: arr(j.notUnderstood).map(this.plainMath, this),
+        nextContent: this.plainMath(j.nextContent || ''),
+        nextDate: this.state.nextDate || '',
+        homeworkSets: this.normSets(j.homeworkSets, j.homework),
+        homeworkLevel: 1,
+        comment: this.plainMath(j.comment || '')
+      };
+      if (this.data.homeworkSets.length < 2) this.data.homeworkLevel = 0;
+      this.saveLog();
+      this.setState({ screen: 'result', copied: false });
+    } catch (e) {
+      var msg = (e && e.message) || 'エラーが発生しました。もう一度お試しください。';
+      if (/too large/i.test(msg)) msg = 'ノートの画像が大きすぎて送れませんでした。PDFのページ数を減らす（1〜2ページずつ）か、スキャン解像度を下げてお試しください。';
+      this.setState({ screen: 'upload', error: msg });
+    }
+  }
+
+  showSample() {
+    this.data = JSON.parse(JSON.stringify(SAMPLE));
+    if (this.state.lessonDate) this.data.lessonDate = this.state.lessonDate;
+    if (this.state.nextDate) this.data.nextDate = this.state.nextDate;
+    this.setState({ screen: 'result', copied: false });
+  }
+
+  reset() {
+    this.data = null;
+    this.setState({ screen: 'upload', files: [], name: '', subject: '', memo: '', lessonDate: '', nextDate: '', error: '', copied: false, calTarget: '', calD: 0, calH: 0 });
+  }
+
+  addFiles(list) {
+    var incoming = Array.prototype.slice.call(list).filter(function (f) { return /pdf/i.test(f.type) || /\.pdf$/i.test(f.name); });
+    if (!incoming.length) { this.setState({ error: 'PDFファイルを選んでください。' }); return; }
+    var meta = this.parseFileName(incoming[0].name);
+    this.setState({
+      files: this.state.files.concat(incoming), error: '',
+      name: this.state.name || meta.name,
+      subject: this.state.subject || meta.subject
+    });
+  }
+
+  onPick(e) { this.addFiles(e.target.files || []); }
+  onDragOver(e) { e.preventDefault(); }
+  onDrop(e) { e.preventDefault(); this.addFiles((e.dataTransfer && e.dataTransfer.files) || []); }
+  removeFile(e) {
+    var i = +e.currentTarget.dataset.index;
+    this.setState({ files: this.state.files.filter(function (_, n) { return n !== i; }) });
+  }
+  setName(e) { this.setState({ name: e.target.value }); }
+  setSubject(e) { this.setState({ subject: e.target.value }); }
+  setMemo(e) { this.setState({ memo: e.target.value }); }
+
+  onEdit(e) {
+    if (!this.data) return;
+    var el = e.currentTarget, f = el.dataset.field, txt = el.innerText.replace(/\n$/, '');
+    if (f === 'homework') {
+      var sets = this.hwSets();
+      sets[this.hwIdx()].problems = txt;
+      this.data.homeworkSets = sets;
+      return;
+    }
+    if (f === 'understood' || f === 'notUnderstood') {
+      this.data[f] = txt.split('\n').map(function (s) { return s.replace(/^[・\-•\s]+/, '').trim(); }).filter(Boolean);
+    } else this.data[f] = txt;
+  }
+
+  plain() {
+    var d = this.data;
+    var list = function (a) { return a && a.length ? a.map(function (x) { return '・' + x; }).join('\n') : ''; };
+    return [
+      '学生様名:' + d.name + 'さん',
+      '授業日：' + d.lessonDate,
+      '科目：' + d.subject,
+      '授業内容:', d.summary,
+      '理解できた点：', list(d.understood),
+      '理解できなかった点：', list(d.notUnderstood),
+      '次回の授業内容：', d.nextContent,
+      '次回の授業日:' + d.nextDate,
+      '宿題：プリント',
+      'コメント：', d.comment
+    ].join('\n');
+  }
+
+  esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // 宿題プリント（A4）を印刷ダイアログへ。ブラウザの「PDFに保存」で書き出せる
+  printHomework() {
+    if (!this.data) return;
+    var d = this.data, esc = this.esc;
+    var level = (this.hwSets()[this.hwIdx()] || {}).level || '';
+    var items = String(this.hwText() || '').split(/\n+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!items.length) items = ['（宿題が未入力です）'];
+    var rows = items.map(function (q) {
+      return '<li><div class="q">' + esc(q) + '</div></li>';
+    }).join('');
+    var meta = [
+      d.name ? esc(d.name) + ' 様' : '',
+      d.subject ? esc(d.subject) : '',
+      d.lessonDate ? esc(d.lessonDate) + ' の授業分' : '',
+      level ? '難易度：' + esc(level) : ''
+    ].filter(Boolean).join('　/　');
+    var TAG = 'scr' + 'ipt';
+    var css = [
+      '@page{size:A4;margin:16mm 15mm;}',
+      '*{box-sizing:border-box;}',
+      'body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,Meiryo,sans-serif;color:#1a1a1a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+      '.wrap{max-width:180mm;margin:0 auto;}',
+      'h1{font-size:20pt;margin:0 0 2mm;letter-spacing:.04em;}',
+      '.meta{font-size:10.5pt;color:#444;border-bottom:1.5px solid #1b2f5e;padding-bottom:3mm;margin-bottom:6mm;}',
+      '.note{font-size:10pt;color:#555;line-height:1.7;margin:0 0 7mm;}',
+      'ol{margin:0;padding:0;list-style:none;}',
+      'li{page-break-inside:avoid;break-inside:avoid;margin:0 0 7mm;}',
+      '.q{font-size:12pt;line-height:1.9;}',
+      '.foot{margin-top:8mm;border-top:1px solid #d7dbe3;padding-top:3mm;font-size:9pt;color:#8b93a1;}',
+      '.katex{font-size:1.05em;}',
+      '.katex-display{margin:2mm 0 3mm;}',
+      '@media screen{body{background:#f3f2f2;}.wrap{background:#fff;padding:16mm;margin:8mm auto;box-shadow:0 2px 12px rgba(0,0,0,.12);}}'
+    ].join('');
+    var body = '<div class="wrap"><h1>宿題プリント</h1>' +
+      '<div class="meta">' + (meta || '&nbsp;') + '</div>' +
+      '<p class="note">今日の授業で扱った問題と同じ解法プロセスで解ける類似問題です。考え方の流れを書きながら解いてみてください。</p>' +
+      '<ol>' + rows + '</ol>' +
+      '<div class="foot">次回の授業' + (d.nextDate ? '（' + esc(d.nextDate) + '）' : '') + 'までに解いて、わからない箇所に印をつけてお持ちください。</div></div>';
+    var html = '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">' +
+      '<title>宿題</title>' +
+      '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">' +
+      '<sty' + 'le>' + css + '</sty' + 'le></head><body>' + body +
+      '<' + TAG + ' src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></' + TAG + '>' +
+      '<' + TAG + ' src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></' + TAG + '>' +
+      '<' + TAG + '>' + [
+        'function go(){',
+        '  try {',
+        '    if (window.renderMathInElement) renderMathInElement(document.body, {',
+        '      delimiters: [',
+        '        {left:"$$",right:"$$",display:true},',
+        '        {left:"\\\\[",right:"\\\\]",display:true},',
+        '        {left:"$",right:"$",display:false},',
+        '        {left:"\\\\(",right:"\\\\)",display:false}',
+        '      ], throwOnError:false, strict:false',
+        '    });',
+        '  } catch(e){}',
+        '  var f = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();',
+        '  f.then(function(){ setTimeout(function(){ window.print(); }, 400); });',
+        '}',
+        'window.addEventListener("load", go);'
+      ].join('') + '</' + TAG + '></body></html>';
+
+    var w = null;
+    try { w = window.open('', '_blank'); } catch (e) { w = null; }
+    if (w && w.document) {
+      w.document.open(); w.document.write(html); w.document.close();
+      return;
+    }
+    var old = document.getElementById('hw-print-frame');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var f = document.createElement('iframe');
+    f.id = 'hw-print-frame';
+    f.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:0;';
+    document.body.appendChild(f);
+    var doc = f.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+  }
+
+  async copy() {
+    if (!this.data) return;
+    this.saveLog();
+    var text = this.plain(), ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); ok = true; }
+    } catch (e) { ok = false; }
+    if (!ok) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+        ok = document.execCommand('copy');
+        ta.parentNode.removeChild(ta);
+      } catch (e2) { ok = false; }
+    }
+    var self = this;
+    if (ok) {
+      this.setState({ copied: true, manual: false });
+      clearTimeout(this._t);
+      this._t = setTimeout(function () { self.setState({ copied: false }); }, 2200);
+    } else {
+      this.setState({ copied: false, manual: true, manualText: text });
+      setTimeout(function () { if (self._ta) { self._ta.focus(); self._ta.select(); } }, 60);
+    }
+  }
+
+  setTaRef(el) { this._ta = el; }
+  selectAll(e) { e.currentTarget.select(); }
+  closeManual() { this.setState({ manual: false }); }
+
+  renderVals() {
+    var s = this.state, d = this.data || SAMPLE, i;
+
+    var cells = [];
+    var first = new Date(s.calY, s.calM, 1).getDay();
+    var days = new Date(s.calY, s.calM + 1, 0).getDate();
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    for (i = 0; i < first; i++) cells.push({ empty: true, day: 0, label: '', bg: 'transparent', border: 'transparent', fg: '#fff', weight: '400', cursor: 'default' });
+    for (i = 1; i <= days; i++) {
+      var sel = s.calD === i;
+      var dow = new Date(s.calY, s.calM, i).getDay();
+      var isToday = new Date(s.calY, s.calM, i).getTime() === today.getTime();
+      cells.push({
+        empty: false, day: i, label: String(i),
+        bg: sel ? '#1b2f5e' : '#fff',
+        border: sel ? '#1b2f5e' : (isToday ? '#1b2f5e' : '#e7e9ee'),
+        fg: sel ? '#fff' : (dow === 0 ? '#b42318' : dow === 6 ? '#23417f' : '#101828'),
+        weight: sel || isToday ? '700' : '400',
+        cursor: 'pointer'
+      });
+    }
+
+    var times = [];
+    for (i = 10; i <= 23; i++) {
+      var ts = s.calH === i;
+      times.push({
+        hour: i, label: i + ':00',
+        bg: ts ? '#1b2f5e' : '#fff', border: ts ? '#1b2f5e' : '#d7dbe3',
+        fg: ts ? '#fff' : '#101828', weight: ts ? '700' : '400'
+      });
+    }
+
+    var labels = [
+      'PDFを開く',
+      'ノートを読み取る' + (s.step === 1 && s.progress ? '（' + s.progress + '%）' : ''),
+      'AIが内容を整理する',
+      '振り返りに整える'
+    ];
+
+    return {
+      isUpload: s.screen === 'upload', isLoading: s.screen === 'loading', isResult: s.screen === 'result',
+      isMonthly: s.screen === 'monthly',
+      hasLogs: this.logs.length > 0, noLogs: this.logs.length === 0,
+      unbacked: this.unbackedCount(),
+      needBackup: this.unbackedCount() >= 3 || (this.unbackedCount() > 0 && new Date().getDate() >= 25),
+      logSummary: this.logs.length
+        ? '保存済み ' + this.logs.length + '件（' + this.monthOptions().map(this.ymLabel, this).join('・') + '）'
+        : 'まだ保存されたコメントはありません',
+      mMonths: this.monthOptions().map(function (ym) {
+        var on = ym === s.mYM;
+        return { v: ym, label: this.ymLabel(ym), bg: on ? '#1b2f5e' : '#fff', fg: on ? '#fff' : '#475467', border: on ? '#1b2f5e' : '#d7dbe3', weight: on ? '700' : '400' };
+      }, this),
+      mStudents: this.studentNames().map(function (n) {
+        var on = n === s.mStudent;
+        var c = this.logs.filter(function (r) { return r.name === n && r.ym === s.mYM; }).length;
+        return { v: n, label: n + '（' + c + '回）', bg: on ? '#1b2f5e' : '#fff', fg: on ? '#fff' : '#475467', border: on ? '#1b2f5e' : '#d7dbe3', weight: on ? '700' : '400' };
+      }, this),
+      mList: this.mRecords().map(function (r, i) {
+        return { n: (i + 1) + '回目', date: r.date || '日付未設定', comment: r.comment };
+      }),
+      mCount: this.mRecords().length,
+      mHasRecords: this.mRecords().length > 0,
+      mNoRecords: this.mRecords().length === 0,
+      mBusy: !!s.mBusy, mText: s.mText, mHasText: !!s.mText,
+      mTitle: (s.mYM ? this.ymLabel(s.mYM) : '') + ((s.mStudent || s.mPasteName) ? '・' + (s.mStudent || s.mPasteName.trim()) + '様' : ''),
+      mGenLabel: s.mBusy ? '生成中…' : '今月のまとめコメントを作る',
+      mCopyLabel: s.mCopied ? '✓ コピーしました' : 'まとめをコピー',
+      openMonthly: this.openMonthly, closeMonthly: this.closeMonthly,
+      pickMStudent: this.pickMStudent, pickMYM: this.pickMYM,
+      genMonthly: function () { return this.genMonthly(); }.bind(this), copyMonthly: this.copyMonthly,
+      mPaste: s.mPaste, mPasteName: s.mPasteName,
+      setMPaste: this.setMPaste, setMPasteName: this.setMPasteName, genFromPaste: this.genFromPaste,
+      mPasteNotReady: !!s.mBusy || !s.mPaste.trim() || !s.mPasteName.trim(),
+      mPasteLabel: s.mBusy ? '生成中…' : '貼り付けた内容でまとめを作る',
+      exportLogs: this.exportLogs, importLogs: this.importLogs,
+      clearMonthly: this.clearMonthly, onEditMonthly: this.onEditMonthly,
+      steps: labels.map(function (label, n) {
+        return { label: label, mark: n < s.step ? '✓' : n === s.step ? '●' : '○', color: n <= s.step ? '#1b2f5e' : '#b6bcc7' };
+      }),
+      files: s.files.map(function (f) { return { name: f.name, size: this.fmtSize(f.size) }; }, this),
+      hasFiles: s.files.length > 0, notReady: s.files.length === 0,
+      name: s.name, subject: s.subject, memo: s.memo, error: s.error,
+
+      lessonLabel: s.lessonDate || '日付と時間を選ぶ',
+      nextLabel: s.nextDate || '日付と時間を選ぶ',
+      lessonColor: s.lessonDate ? '#101828' : '#9aa3af',
+      nextColor: s.nextDate ? '#101828' : '#9aa3af',
+      lessonBorder: s.calTarget === 'lesson' ? '#1b2f5e' : '#d7dbe3',
+      nextBorder: s.calTarget === 'next' ? '#1b2f5e' : '#d7dbe3',
+      calOpen: !!s.calTarget,
+      calTitle: s.calTarget === 'next' ? '次回の授業日を選ぶ' : '授業日を選ぶ',
+      monthLabel: s.calY + '年 ' + (s.calM + 1) + '月',
+      dows: DOW.map(function (w, n) { return { label: w, color: n === 0 ? '#b42318' : n === 6 ? '#23417f' : '#8b93a1' }; }),
+      cells: cells, times: times,
+      calPreview: s.calD && s.calH ? this.fmtSlot(s.calM, s.calD, s.calH) : (s.calD ? '時間を選んでください' : '日付を選んでください'),
+      calIncomplete: !(s.calD && s.calH),
+
+      d: d,
+      hwText: this.hwText(),
+      hwMulti: this.hwSets().length > 1,
+      hwLevels: this.hwSets().map(function (x, n) {
+        var on = n === this.hwIdx();
+        return {
+          i: n, label: x.level,
+          bg: on ? '#1b2f5e' : '#fff', fg: on ? '#fff' : '#475467',
+          border: on ? '#1b2f5e' : '#d7dbe3', weight: on ? '700' : '400'
+        };
+      }, this),
+      pickHwLevel: this.pickHwLevel,
+      understoodText: (d.understood || []).map(function (x) { return '・' + x; }).join('\n'),
+      notUnderstoodText: (d.notUnderstood || []).map(function (x) { return '・' + x; }).join('\n'),
+      copyLabel: s.copied ? '✓ コピーしました' : 'テキストをコピー',
+      manual: !!s.manual, manualText: s.manualText || '',
+
+      openCal: this.openCal, closeCal: this.closeCal, shiftMonth: this.shiftMonth,
+      pickDay: this.pickDay, pickTime: this.pickTime, confirmCal: this.confirmCal,
+      onPick: this.onPick, onDragOver: this.onDragOver, onDrop: this.onDrop, removeFile: this.removeFile,
+      setName: this.setName, setSubject: this.setSubject, setMemo: this.setMemo,
+      generate: this.generate, showSample: this.showSample, reset: this.reset,
+      copy: this.copy, onEdit: this.onEdit, printHomework: this.printHomework,
+      setTaRef: this.setTaRef, selectAll: this.selectAll, closeManual: this.closeManual,
+      setKey: this.setKey
+    };
+  }
+}
+</script>
+</body>
+</html>
